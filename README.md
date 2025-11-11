@@ -18,3 +18,5 @@ It's worth noting that this application will remain completely free and open-sou
   - [ ] Spanish
   - [ ] Italian
 - [ ] __Complete README__ (documentation with detailed installation and usage instructions)
+
+<div align="center"> Made with ❤️ by the Paul "PaulNet" </div> 
