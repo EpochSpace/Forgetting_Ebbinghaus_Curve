@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>"Forgetting Ebbinghaus Curve" (working title) demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .screen-container {
+            transition: all 0.3s ease;
+        }
+        .screen-container:hover {
+            transform: translateY(-4px);
+        }
+        .macos-window {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .macos-titlebar {
+            height: 52px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .dark .macos-titlebar {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .traffic-lights {
+            display: flex;
+            gap: 8px;
+        }
+        .traffic-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .ios-screen {
+            border-radius: 55px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            aspect-ratio: 1179/2556;
+            max-height: 700px;
+        }
+        .dynamic-island {
+            width: 125px;
+            height: 37px;
+            background: #000;
+            border-radius: 19px;
+            margin: 0 auto;
+            position: relative;
+            top: 15px;
+        }
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        .curve-path {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: drawCurve 2s ease-out forwards;
+        }
+        @keyframes drawCurve {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card-hover {
+            transition: all 0.2s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+        .lang-btn.active {
+            background: white;
+            color: #4f46e5;
+        }
+        .lang-btn:not(.active) {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .theme-toggle {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 100;
+            background: white;
+            border-radius: 12px;
+            padding: 8px 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .dark .theme-toggle {
+            background: #1c1c1e;
+            color: white;
+        }
+        .accent-primary {
+            color: #5856d6;
+        }
+        .bg-accent-primary {
+            background-color: #5856d6;
+        }
+        .dark .bg-surface {
+            background: #1c1c1e;
+        }
+        .bg-surface {
+            background: white;
+        }
+        .dark .bg-surface-elevated {
+            background: #2c2c2e;
+        }
+        .bg-surface-elevated {
+            background: #f5f5f7;
+        }
+        .tab-active {
+            background: #5856d6;
+            color: white;
+        }
+        .notification-mock {
+            border-radius: 16px;
+            overflow: hidden;
+            backdrop-filter: blur(40px);
+        }
+    </style>
+</head>
+<body class="light">
+    <div class="container mx-auto px-6 py-12">
+        <!-- Language Toggle -->
+        <div class="flex justify-end mb-6">
+            <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+                <button id="lang-ru" onclick="setLanguage('ru')" class="lang-btn px-4 py-1.5 rounded-full font-medium text-sm transition-all bg-white text-indigo-600">RU</button>
+                <button id="lang-en" onclick="setLanguage('en')" class="lang-btn px-4 py-1.5 rounded-full font-medium text-sm transition-all text-white/80 hover:text-white">EN</button>
+            </div>
+        </div>
+        <!-- Hero Section -->
+        <div class="text-center mb-16 fade-in">
+            <div class="inline-flex items-center gap-3 mb-4">
+                <div class="w-20 h-20 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl flex items-center justify-center">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                        <path d="M8 24C8 24 12 14 24 14C36 14 40 24 40 24" stroke="#5856d6" stroke-width="3" stroke-linecap="round"/>
+                        <path d="M8 24C8 24 12 34 24 34C36 34 40 24 40 24" stroke="#5856d6" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+                    </svg>
+                </div>
+            </div>
+            <h1 class="text-6xl font-bold text-white mb-4">"Forgetting Ebbinghaus Curve (Demo)"</h1>
+            <p class="text-2xl text-white/90 mb-2" data-i18n="hero-subtitle">Запомни все</p>
+            <p class="text-xl text-white/80 max-w-2xl mx-auto">Open-source iOS/macOS app that enhances memory retention through smart note-taking based on the Ebbinghaus forgetting curve.</p>
+        </div>
+        <!-- Platform Tabs -->
+        <div class="flex justify-center gap-4 mb-12">
+            <button onclick="showPlatform('macos')" id="tab-macos" class="tab-active px-8 py-3 rounded-full font-semibold transition-all">
+                macOS
+            </button>
+            <button onclick="showPlatform('ios')" id="tab-ios" class="px-8 py-3 rounded-full font-semibold bg-white/20 text-white hover:bg-white/30 transition-all">
+                iOS
+            </button>
+        </div>
+        <!-- macOS Screens -->
+        <div id="macos-screens" class="space-y-16">
+            <div class="screen-container">
+                <h2 class="text-3xl font-bold text-white mb-6 text-center">macOS — Dashboard (Light)</h2>
+                <div class="macos-window max-w-7xl mx-auto bg-white dark:bg-gray-900">
+                    <div class="macos-titlebar bg-gray-100 dark:bg-gray-800">
+                        <div class="traffic-lights">
+                            <div class="traffic-light bg-red-500"></div>
+                            <div class="traffic-light bg-yellow-500"></div>
+                            <div class="traffic-light bg-green-500"></div>
+                        </div>
+                        <div class="flex-1 text-center text-sm font-medium text-gray-700 dark:text-gray-300">Forgetting Ebbinghaus Curve</div>
+                    </div>
+                    <div class="flex h-[848px]">
+                        <!-- Sidebar -->
+                        <div class="w-64 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
+                            <div class="space-y-1">
+                                <div class="px-3 py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z"/>
+                                        </svg>
+                                        <span data-i18n="today">Сегодня</span>
+                                    </div>
+                                    <span class="bg-indigo-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">18</span>
+                                </div>
+                                <div class="px-3 py-2 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2">
+                                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z"/>
+                                    </svg>
+                                    <span data-i18n="scheduled">Запланировано</span>
+                                </div>
+                                <div class="px-3 py-2 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2">
+                                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                                    </svg>
+                                    <span data-i18n="all-materials">Все материалы</span>
+                                </div>
+                                <div class="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+                                <div class="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider" data-i18n="tags">Метки</div>
+                                <div class="px-3 py-2 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                    <span data-i18n="languages">Языки</span>
+                                    <span class="ml-auto text-xs text-gray-400">24</span>
+                                </div>
+                                <div class="px-3 py-2 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                                    <span data-i18n="exam">Экзамен</span>
+                                    <span class="ml-auto text-xs text-gray-400">12</span>
+                                </div>
+                                <div class="px-3 py-2 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                                    <span data-i18n="work">Работа</span>
+                                    <span class="ml-auto text-xs text-gray-400">8</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Main Content -->
+                        <div class="flex-1 overflow-y-auto">
+                            <div class="p-8">
+                                <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2" data-i18n="greeting">Привет, Александр</h1>
+                                <p class="text-gray-500 dark:text-gray-400 mb-8" data-i18n="date">Вторник, 14 января</p>
+                                <!-- Reviews Due Today -->
+                                <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-8 mb-6 text-white">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-1">
+                                            <h2 class="text-2xl font-bold mb-2" data-i18n="reviews-today">Повторения на сегодня</h2>
+                                            <p class="text-indigo-100 mb-6" data-i18n="materials-waiting">18 материалов ждут вашего внимания</p>
+                                            <button class="bg-white text-indigo-600 px-6 py-3 rounded-xl font-semibold hover:bg-indigo-50 transition-all shadow-lg">
+                                                <span data-i18n="start-review">Начать повторение</span>
+                                            </button>
+                                        </div>
+                                        <div class="relative" style="width: 120px; height: 120px;">
+                                            <svg width="120" height="120" class="transform -rotate-90">
+                                                <circle cx="60" cy="60" r="54" stroke="white" stroke-width="8" opacity="0.2" fill="none"/>
+                                                <circle cx="60" cy="60" r="54" stroke="white" stroke-width="8" fill="none" stroke-dasharray="339.292" stroke-dashoffset="101.788" stroke-linecap="round"/>
+                                            </svg>
+                                            <div class="absolute" style="left: 45%; top: 45%; transform: translate(-50%, -50%);">
+                                                <div class="text-center whitespace-nowrap">
+                                                    <div class="text-lg font-bold leading-tight">70%</div>
+                                                    <div class="text-xs text-indigo-100 leading-tight mt-0.5" data-i18n="completed">выполнено</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Quick Add -->
+                                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 mb-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                                    <div class="flex items-center gap-3">
+                                        <svg width="24" height="24" fill="none" stroke="currentColor" class="text-gray-400">
+                                            <circle cx="12" cy="12" r="10" stroke-width="2"/>
+                                            <path d="M12 8v8M8 12h8" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                        <input type="text" data-i18n="add-material" placeholder="Добавить материал — мы напомним в нужный момент" class="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-400">
+                                        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" stroke-linecap="round"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Progress Section -->
+                                <div class="grid grid-cols-2 gap-6">
+                                    <!-- Forgetting Curve -->
+                                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4" data-i18n="forgetting-curve">Кривая забывания</h3>
+                                        <svg width="100%" height="200" viewBox="0 0 400 200">
+                                            <defs>
+                                                <linearGradient id="curveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                                    <stop offset="0%" style="stop-color:#5856d6;stop-opacity:0.2"/>
+                                                    <stop offset="100%" style="stop-color:#5856d6;stop-opacity:0"/>
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M 20 40 Q 100 40, 150 80 T 280 140 L 380 160" stroke="#5856d6" stroke-width="3" fill="none" stroke-linecap="round"/>
+                                            <path d="M 20 40 Q 100 40, 150 80 T 280 140 L 380 160 L 380 200 L 20 200 Z" fill="url(#curveGradient)"/>
+                                            <text x="20" y="30" class="text-xs fill-gray-500">100%</text>
+                                            <text x="20" y="190" class="text-xs fill-gray-500">0%</text>
+                                            <text x="180" y="190" class="text-xs fill-gray-400" data-i18n="time">Время</text>
+                                        </svg>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2" data-i18n="retention-up">Ваше удержание ↑ на 12% за неделю</p>
+                                    </div>
+                                    <!-- Weekly Activity -->
+                                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4" data-i18n="weekly-activity">Активность за неделю</h3>
+                                        <div class="flex items-end justify-between h-32 gap-2">
+                                            <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-t" style="height: 45%"></div>
+                                            <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-t" style="height: 60%"></div>
+                                            <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-t" style="height: 75%"></div>
+                                            <div class="flex-1 bg-indigo-500 rounded-t" style="height: 90%"></div>
+                                            <div class="flex-1 bg-indigo-600 rounded-t" style="height: 100%"></div>
+                                            <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-t" style="height: 30%"></div>
+                                            <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-t" style="height: 20%"></div>
+                                        </div>
+                                        <div class="flex justify-between mt-3 text-xs text-gray-400">
+                                            <span data-i18n="mon">Пн</span>
+                                            <span data-i18n="tue">Вт</span>
+                                            <span data-i18n="wed">Ср</span>
+                                            <span data-i18n="thu">Чт</span>
+                                            <span data-i18n="fri">Пт</span>
+                                            <span data-i18n="sat">Сб</span>
+                                            <span data-i18n="sun">Вс</span>
+                                        </div>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-3" data-i18n="reviews-this-week">142 повторения на этой неделе</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- macOS Review Session -->
+            <div class="screen-container">
+                <h2 class="text-3xl font-bold text-white mb-6 text-center">macOS — Review Session (Dark)</h2>
+                <div class="macos-window max-w-6xl mx-auto bg-gray-900">
+                    <div class="macos-titlebar bg-gray-800">
+                        <div class="traffic-lights">
+                            <div class="traffic-light bg-red-500"></div>
+                            <div class="traffic-light bg-yellow-500"></div>
+                            <div class="traffic-light bg-green-500"></div>
+                        </div>
+                        <div class="flex-1 text-center text-sm font-medium text-gray-300" data-i18n="review-session">Сессия повторения</div>
+                    </div>
+                    <div class="h-[800px] bg-gray-900 flex flex-col">
+                        <!-- Progress Bar -->
+                        <div class="px-8 pt-6 pb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm text-gray-400" data-i18n="progress">7 из 20</span>
+                                <span class="text-sm text-gray-400" data-i18n="time-left">≈ 8 минут осталось</span>
+                            </div>
+                            <div class="w-full bg-gray-800 rounded-full h-2">
+                                <div class="bg-indigo-500 h-2 rounded-full transition-all" style="width: 35%"></div>
+                            </div>
+                        </div>
+                        <!-- Card Content -->
+                        <div class="flex-1 flex items-center justify-center px-8 pb-8">
+                            <div class="max-w-3xl w-full">
+                                <div class="bg-gray-800 rounded-3xl p-12 mb-8 min-h-[400px] flex items-center justify-center border border-gray-700">
+                                    <div class="text-center space-y-6">
+                                        <div class="inline-block px-4 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm font-medium mb-4" data-i18n="languages">Языки</div>
+                                        <h2 class="text-4xl font-bold text-white mb-8" data-i18n="word">Слово: serendipity</h2>
+                                        <div class="text-xl text-gray-300 leading-relaxed">
+                                            <p class="mb-4"><span class="text-gray-500" data-i18n="meaning">Значение:</span> <span data-i18n="meaning-text">счастливая случайность, приятная неожиданность</span></p>
+                                            <p class="text-indigo-400" data-i18n="example">Пример: I found it by serendipity.</p>
+                                        </div>
+                                        <div class="pt-6 text-sm text-gray-500" data-i18n="press-space">Нажмите пробел чтобы показать ответ</div>
+                                    </div>
+                                </div>
+                                <!-- Rating Buttons -->
+                                <div class="grid grid-cols-3 gap-4">
+                                    <button class="group bg-red-500/10 hover:bg-red-500 border-2 border-red-500/30 hover:border-red-500 rounded-2xl p-6 transition-all">
+                                        <div class="text-red-400 group-hover:text-white font-semibold text-lg mb-2" data-i18n="dont-remember">Не помню</div>
+                                        <div class="text-red-400/60 group-hover:text-white/80 text-sm" data-i18n="repeat-10min">Повтор через 10 мин</div>
+                                        <div class="text-red-400/40 group-hover:text-white/60 text-xs mt-2" data-i18n="key-1">Клавиша: 1</div>
+                                    </button>
+                                    <button class="group bg-yellow-500/10 hover:bg-yellow-500 border-2 border-yellow-500/30 hover:border-yellow-500 rounded-2xl p-6 transition-all">
+                                        <div class="text-yellow-400 group-hover:text-white font-semibold text-lg mb-2" data-i18n="normal">Нормально</div>
+                                        <div class="text-yellow-400/60 group-hover:text-white/80 text-sm" data-i18n="repeat-tomorrow">Повтор завтра в 10:00</div>
+                                        <div class="text-yellow-400/40 group-hover:text-white/60 text-xs mt-2" data-i18n="key-2">Клавиша: 2</div>
+                                    </button>
+                                    <button class="group bg-green-500/10 hover:bg-green-500 border-2 border-green-500/30 hover:border-green-500 rounded-2xl p-6 transition-all">
+                                        <div class="text-green-400 group-hover:text-white font-semibold text-lg mb-2" data-i18n="easy">Легко</div>
+                                        <div class="text-green-400/60 group-hover:text-white/80 text-sm" data-i18n="repeat-3days">Повтор через 3 дня</div>
+                                        <div class="text-green-400/40 group-hover:text-white/60 text-xs mt-2" data-i18n="key-3">Клавиша: 3</div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- macOS Item Editor -->
+            <div class="screen-container">
+                <h2 class="text-3xl font-bold text-white mb-6 text-center">macOS — Item Editor (Light)</h2>
+                <div class="macos-window max-w-6xl mx-auto bg-white">
+                    <div class="macos-titlebar bg-gray-100">
+                        <div class="traffic-lights">
+                            <div class="traffic-light bg-red-500"></div>
+                            <div class="traffic-light bg-yellow-500"></div>
+                            <div class="traffic-light bg-green-500"></div>
+                        </div>
+                        <div class="flex-1 text-center text-sm font-medium text-gray-700" data-i18n="edit-material">Редактирование материала</div>
+                    </div>
+                    <div class="flex h-[800px]">
+                        <div class="flex-1 p-8 overflow-y-auto">
+                            <div class="max-w-3xl">
+                                <div class="mb-6">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="title">Название</label>
+                                    <input type="text" data-i18n-value="formula-circle" value="Формула: Площадь круга" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-gray-900">
+                                </div>
+                                <div class="mb-6">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="content">Содержание</label>
+                                    <textarea rows="8" data-i18n="formula-content" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-gray-900">S = πr²
+где:
+• S — площадь круга
+• r — радиус круга
+• π ≈ 3.14159
+Пример: При r = 5 см
+S = 3.14 × 5² = 78.5 см²</textarea>
+                                </div>
+                                <div class="mb-6">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="tags-label">Метки</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center gap-2">
+                                            <span data-i18n="exam">Экзамен</span>
+                                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                                            </svg>
+                                        </span>
+                                        <button class="px-3 py-1 border-2 border-dashed border-gray-300 text-gray-500 rounded-full text-sm font-medium hover:border-gray-400 hover:text-gray-600">
+                                            <span data-i18n="add-tag">+ Добавить метку</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mb-6">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="attachments">Вложения</label>
+                                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-gray-400 transition-colors cursor-pointer">
+                                        <svg class="mx-auto mb-2 text-gray-400" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
+                                        </svg>
+                                        <p class="text-sm text-gray-500" data-i18n="add-attachments">Добавьте изображения, аудио или ссылки</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Right Sidebar - Schedule -->
+                        <div class="w-96 bg-gray-50 border-l border-gray-200 p-6 overflow-y-auto">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="review-schedule">График повторений</h3>
+                            
+                            <!-- Individual Curve -->
+                            <div class="bg-white rounded-xl p-4 mb-6 border border-gray-200">
+                                <svg width="100%" height="120" viewBox="0 0 300 120">
+                                    <path d="M 10 20 Q 60 20, 90 45 T 180 80 L 290 95" stroke="#5856d6" stroke-width="2" fill="none"/>
+                                    <circle cx="10" cy="20" r="4" fill="#5856d6"/>
+                                    <circle cx="90" cy="45" r="4" fill="#5856d6"/>
+                                    <circle cx="180" cy="80" r="4" fill="#5856d6"/>
+                                    <circle cx="290" cy="95" r="4" fill="#10b981"/>
+                                </svg>
+                                <div class="mt-3 space-y-2">
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="text-gray-500" data-i18n="current-interval">Текущий интервал</span>
+                                        <span class="font-semibold text-gray-900" data-i18n="three-days">3 дня</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="text-gray-500" data-i18n="next-review">Следующий повтор</span>
+                                        <span class="font-semibold text-indigo-600" data-i18n="next-review-date">17 янв, 10:00</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- History -->
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3" data-i18n="rating-history">История оценок</h4>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900" data-i18n="normal">Нормально</div>
+                                        <div class="text-xs text-gray-500" data-i18n="date-jan14">14 янв, 10:30</div>
+                                    </div>
+                                    <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900" data-i18n="easy">Легко</div>
+                                        <div class="text-xs text-gray-500" data-i18n="date-jan11">11 янв, 15:20</div>
+                                    </div>
+                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900" data-i18n="dont-remember">Не помню</div>
+                                        <div class="text-xs text-gray-500" data-i18n="date-jan10">10 янв, 09:15</div>
+                                    </div>
+                                    <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- macOS Analytics -->
+            <div class="screen-container">
+                <h2 class="text-3xl font-bold text-white mb-6 text-center">macOS — Analytics (Dark)</h2>
+                <div class="macos-window max-w-7xl mx-auto bg-gray-900">
+                    <div class="macos-titlebar bg-gray-800">
+                        <div class="traffic-lights">
+                            <div class="traffic-light bg-red-500"></div>
+                            <div class="traffic-light bg-yellow-500"></div>
+                            <div class="traffic-light bg-green-500"></div>
+                        </div>
+                        <div class="flex-1 text-center text-sm font-medium text-gray-300" data-i18n="analytics">Аналитика</div>
+                    </div>
+                    <div class="p-8 h-[800px] overflow-y-auto">
+                        <h1 class="text-3xl font-bold text-white mb-8" data-i18n="learning-stats">Ваша статистика обучения</h1>
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-4 gap-6 mb-8">
+                            <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                                <div class="text-gray-400 text-sm mb-2" data-i18n="day-streak">Серия дней</div>
+                                <div class="text-4xl font-bold text-white mb-1">12</div>
+                                <div class="text-green-400 text-sm" data-i18n="best-streak">🔥 Лучшая: 45</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                                <div class="text-gray-400 text-sm mb-2" data-i18n="retention">Удержание</div>
+                                <div class="text-4xl font-bold text-white mb-1">87%</div>
+                                <div class="text-green-400 text-sm" data-i18n="retention-up-week">↑ 12% за неделю</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                                <div class="text-gray-400 text-sm mb-2" data-i18n="avg-interval">Средний интервал</div>
+                                <div class="text-4xl font-bold text-white mb-1">8.4</div>
+                                <div class="text-gray-400 text-sm" data-i18n="days">дней</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                                <div class="text-gray-400 text-sm mb-2" data-i18n="reviews-per-week">Повторений/неделя</div>
+                                <div class="text-4xl font-bold text-white mb-1">142</div>
+                                <div class="text-indigo-400 text-sm" data-i18n="reviews-increase">+23 чем прошлая</div>
+                            </div>
+                        </div>
+                        <!-- Heatmap -->
+                        <div class="bg-gray-800 rounded-2xl p-6 mb-6 border border-gray-700">
+                            <h3 class="text-lg font-semibold text-white mb-4" data-i18n="activity-heatmap">Тепловая карта активности</h3>
+                            <div class="space-y-2">
+                                <div class="flex gap-1">
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-900/30 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-700/50 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-500 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-700/50 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="flex-1"></div>
+                                    <span class="text-xs text-gray-400" data-i18n="mon">Пн</span>
+                                </div>
+                                <div class="flex gap-1">
+                                    <div class="w-4 h-4 bg-indigo-900/30 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-500 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-700/50 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-900/30 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="flex-1"></div>
+                                    <span class="text-xs text-gray-400" data-i18n="tue">Вт</span>
+                                </div>
+                                <div class="flex gap-1">
+                                    <div class="w-4 h-4 bg-indigo-700/50 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-500 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-500 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-700/50 rounded"></div>
+                                    <div class="flex-1"></div>
+                                    <span class="text-xs text-gray-400" data-i18n="wed">Ср</span>
+                                </div>
+                                <div class="flex gap-1">
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-500 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-700/50 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-900/30 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="flex-1"></div>
+                                    <span class="text-xs text-gray-400" data-i18n="thu">Чт</span>
+                                </div>
+                                <div class="flex gap-1">
+                                    <div class="w-4 h-4 bg-indigo-500 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-500 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-500 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-600 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-700/50 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-900/30 rounded"></div>
+                                    <div class="flex-1"></div>
+                                    <span class="text-xs text-gray-400" data-i18n="fri">Пт</span>
+                                </div>
+                                <div class="flex gap-1">
+                                    <div class="w-4 h-4 bg-indigo-700/50 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-900/30 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-900/30 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-700/50 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="flex-1"></div>
+                                    <span class="text-xs text-gray-400" data-i18n="sat">Сб</span>
+                                </div>
+                                <div class="flex gap-1">
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="w-4 h-4 bg-indigo-900/30 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="w-4 h-4 bg-gray-700 rounded"></div>
+                                    <div class="flex-1"></div>
+                                    <span class="text-xs text-gray-400" data-i18n="sun">Вс</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4 mt-4 text-xs text-gray-400">
+                                <span data-i18n="less">Меньше</span>
+                                <div class="flex gap-1">
+                                    <div class="w-3 h-3 bg-gray-700 rounded"></div>
+                                    <div class="w-3 h-3 bg-indigo-900/30 rounded"></div>
+                                    <div class="w-3 h-3 bg-indigo-700/50 rounded"></div>
+                                    <div class="w-3 h-3 bg-indigo-600 rounded"></div>
+                                    <div class="w-3 h-3 bg-indigo-500 rounded"></div>
+                                </div>
+                                <span data-i18n="more">Больше</span>
+                            </div>
+                        </div>
+                        <!-- Interval Distribution -->
+                        <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                            <h3 class="text-lg font-semibold text-white mb-4" data-i18n="interval-distribution">Распределение интервалов</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="text-gray-400" data-i18n="interval-10min-1h">10 мин — 1 час</span>
+                                        <span class="text-white font-medium" data-i18n="materials-8">8 материалов</span>
+                                    </div>
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="bg-red-500 h-2 rounded-full" style="width: 15%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="text-gray-400" data-i18n="interval-1-3days">1 — 3 дня</span>
+                                        <span class="text-white font-medium" data-i18n="materials-24">24 материала</span>
+                                    </div>
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="bg-yellow-500 h-2 rounded-full" style="width: 45%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="text-gray-400" data-i18n="interval-7-16days">7 — 16 дней</span>
+                                        <span class="text-white font-medium" data-i18n="materials-31">31 материал</span>
+                                    </div>
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="bg-green-500 h-2 rounded-full" style="width: 58%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="text-gray-400" data-i18n="interval-35-90days">35 — 90+ дней</span>
+                                        <span class="text-white font-medium" data-i18n="materials-12">12 материалов</span>
+                                    </div>
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="bg-blue-500 h-2 rounded-full" style="width: 22%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- iOS Screens -->
+        <div id="ios-screens" class="hidden space-y-16">
+            <!-- iOS Home -->
+            <div class="screen-container">
+                <h2 class="text-3xl font-bold text-white mb-6 text-center">iOS — Home (Light)</h2>
+                <div class="ios-screen max-w-sm mx-auto bg-white">
+                    <div class="dynamic-island"></div>
+                    <div class="px-6 pt-16 pb-8 h-full overflow-y-auto">
+                        <!-- Status Bar Space -->
+                        <div class="mb-8 mt-8">
+                            <h1 class="text-4xl font-bold text-gray-900 mb-1" data-i18n="hello-maria">Привет, Мария</h1>
+                            <p class="text-gray-500" data-i18n="tuesday-jan">Вторник, 14 января</p>
+                        </div>
+                        <!-- Today Card -->
+                        <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-3xl p-6 mb-6 shadow-xl">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <div class="text-indigo-100 text-sm mb-1" data-i18n="today">Сегодня</div>
+                                    <div class="text-white text-3xl font-bold" data-i18n="today-materials">18 слов</div>
+                                </div>
+                                <div class="relative" style="width: 80px; height: 80px;">
+                                    <svg width="80" height="80" class="transform -rotate-90">
+                                        <circle cx="40" cy="40" r="36" stroke="white" stroke-width="6" opacity="0.2" fill="none"/>
+                                        <circle cx="40" cy="40" r="36" stroke="white" stroke-width="6" fill="none" stroke-dasharray="226.195" stroke-dashoffset="67.858" stroke-linecap="round"/>
+                                    </svg>
+                                    <div class="absolute" style="left: 45%; top: 45%; transform: translate(-50%, -50%);">
+                                        <div class="text-white text-base font-bold whitespace-nowrap">70%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="w-full bg-white text-indigo-600 py-4 rounded-2xl font-semibold shadow-lg">
+                                <span data-i18n="start-review">Начать повторение</span>
+                            </button>
+                        </div>
+                        <!-- Quick Add -->
+                        <div class="bg-gray-50 rounded-3xl p-4 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center">
+                                <svg width="20" height="20" fill="white" viewBox="0 0 20 20">
+                                    <path d="M10 5v10M5 10h10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <span class="text-gray-500" data-i18n="quick-add">Быстро добавить...</span>
+                        </div>
+                        <!-- Tag Filters -->
+                        <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                            <button class="px-5 py-2 bg-indigo-100 text-indigo-600 rounded-full font-medium whitespace-nowrap" data-i18n="all">Все</button>
+                            <button class="px-5 py-2 bg-gray-100 text-gray-600 rounded-full font-medium whitespace-nowrap flex items-center gap-2">
+                                <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                <span data-i18n="languages">Языки</span>
+                            </button>
+                            <button class="px-5 py-2 bg-gray-100 text-gray-600 rounded-full font-medium whitespace-nowrap flex items-center gap-2">
+                                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                <span data-i18n="exam">Экзамен</span>
+                            </button>
+                            <button class="px-5 py-2 bg-gray-100 text-gray-600 rounded-full font-medium whitespace-nowrap flex items-center gap-2">
+                                <span class="w-2 h-2 bg-orange-500 rounded-full"></span>
+                                <span data-i18n="work">Работа</span>
+                            </button>
+                        </div>
+                        <!-- Upcoming Reviews -->
+                        <div class="mb-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-4" data-i18n="upcoming-reviews">Предстоящие повторения</h2>
+                            <div class="space-y-3">
+                                <div class="bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between">
+                                    <div class="flex-1">
+                                        <div class="font-semibold text-gray-900 mb-1" data-i18n="word-serendipity">Слово: serendipity</div>
+                                        <div class="text-sm text-gray-500" data-i18n="today-at-1430">Сегодня в 14:30</div>
+                                    </div>
+                                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                </div>
+                                <div class="bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between">
+                                    <div class="flex-1">
+                                        <div class="font-semibold text-gray-900 mb-1" data-i18n="formula-circle">Формула: Площадь круга</div>
+                                        <div class="text-sm text-gray-500" data-i18n="today-at-16">Сегодня в 16:00</div>
+                                    </div>
+                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                </div>
+                                <div class="bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between">
+                                    <div class="flex-1">
+                                        <div class="font-semibold text-gray-900 mb-1" data-i18n="interval-training">Интервальная тренировка</div>
+                                        <div class="text-sm text-gray-500" data-i18n="tomorrow-at-9">Завтра в 09:00</div>
+                                    </div>
+                                    <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- iOS Review Session -->
+            <div class="screen-container">
+                <h2 class="text-3xl font-bold text-white mb-6 text-center">iOS — Review Session (Dark)</h2>
+                <div class="ios-screen max-w-sm mx-auto bg-gray-900">
+                    <div class="dynamic-island"></div>
+                    <div class="px-6 pt-16 pb-8 h-full flex flex-col">
+                        <!-- Progress -->
+                        <div class="mt-12 mb-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm text-gray-400" data-i18n="progress">7 из 20</span>
+                                <span class="text-sm text-gray-400" data-i18n="time-left">≈ 8 мин</span>
+                            </div>
+                            <div class="w-full bg-gray-800 rounded-full h-1.5">
+                                <div class="bg-indigo-500 h-1.5 rounded-full" style="width: 35%"></div>
+                            </div>
+                        </div>
+                        <!-- Card -->
+                        <div class="flex-1 flex items-center justify-center mb-6">
+                            <div class="bg-gray-800 rounded-3xl p-8 w-full border border-gray-700">
+                                <div class="text-center space-y-4">
+                                    <div class="inline-block px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm font-medium" data-i18n="languages">Языки</div>
+                                    <h2 class="text-2xl font-bold text-white" data-i18n="bayes-theorem">Теорема Байеса</h2>
+                                    <div class="text-gray-300 leading-relaxed text-base">
+                                        <p class="mb-3" data-i18n="bayes-description">Обновление вероятностей на основе новых данных</p>
+                                        <p class="text-sm text-indigo-400">P(A|B) = P(B|A) × P(A) / P(B)</p>
+                                    </div>
+                                    <div class="pt-4 text-sm text-gray-500" data-i18n="swipe-up">Смахните вверх чтобы увидеть детали</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Rating Buttons -->
+                        <div class="space-y-3">
+                            <button class="w-full bg-red-500/10 border-2 border-red-500/30 text-red-400 py-5 rounded-2xl font-semibold active:scale-95 transition-transform">
+                                <div class="text-lg mb-1" data-i18n="dont-remember">Не помню</div>
+                                <div class="text-sm opacity-60" data-i18n="repeat-10min">Повтор через 10 мин</div>
+                            </button>
+                            <button class="w-full bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-400 py-5 rounded-2xl font-semibold active:scale-95 transition-transform">
+                                <div class="text-lg mb-1" data-i18n="normal">Нормально</div>
+                                <div class="text-sm opacity-60" data-i18n="repeat-tomorrow">Повтор завтра в 10:00</div>
+                            </button>
+                            <button class="w-full bg-green-500/10 border-2 border-green-500/30 text-green-400 py-5 rounded-2xl font-semibold active:scale-95 transition-transform">
+                                <div class="text-lg mb-1" data-i18n="easy">Легко</div>
+                                <div class="text-sm opacity-60" data-i18n="repeat-3days">Повтор через 3 дня</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- iOS Add Item -->
+            <div class="screen-container">
+                <h2 class="text-3xl font-bold text-white mb-6 text-center">iOS — Add New Item (Light)</h2>
+                <div class="ios-screen max-w-sm mx-auto bg-white">
+                    <div class="dynamic-island"></div>
+                    <div class="px-6 pt-16 pb-8 h-full overflow-y-auto">
+                        <div class="mt-12 mb-6 flex items-center">
+                            <button class="text-indigo-600 font-semibold flex-1 text-left" data-i18n="cancel">Отмена</button>
+                            <h1 class="text-xl font-bold text-gray-900 flex-1 text-center" data-i18n="new-material">Новый материал</h1>
+                            <button class="text-indigo-600 font-semibold flex-1 text-right" data-i18n="done">Готово</button>
+                        </div>
+                        <!-- Templates -->
+                        <div class="mb-6">
+                            <h3 class="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wide" data-i18n="template">Шаблон</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button class="bg-indigo-50 border-2 border-indigo-500 rounded-2xl p-4 text-left">
+                                    <div class="text-2xl mb-2">💬</div>
+                                    <div class="font-semibold text-gray-900" data-i18n="card">Карточка</div>
+                                    <div class="text-xs text-gray-500" data-i18n="qa">Вопрос / Ответ</div>
+                                </button>
+                                <button class="bg-gray-50 border-2 border-gray-200 rounded-2xl p-4 text-left">
+                                    <div class="text-2xl mb-2">📝</div>
+                                    <div class="font-semibold text-gray-900" data-i18n="note">Заметка</div>
+                                    <div class="text-xs text-gray-500" data-i18n="free-text">Свободный текст</div>
+                                </button>
+                                <button class="bg-gray-50 border-2 border-gray-200 rounded-2xl p-4 text-left">
+                                    <div class="text-2xl mb-2">🔤</div>
+                                    <div class="font-semibold text-gray-900" data-i18n="word-template">Слово</div>
+                                    <div class="text-xs text-gray-500" data-i18n="term-translation">Термин / Перевод</div>
+                                </button>
+                                <button class="bg-gray-50 border-2 border-gray-200 rounded-2xl p-4 text-left">
+                                    <div class="text-2xl mb-2">🧮</div>
+                                    <div class="font-semibold text-gray-900" data-i18n="formula-template">Формула</div>
+                                    <div class="text-xs text-gray-500" data-i18n="equation">Уравнение</div>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Title -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="title">Название</label>
+                            <input type="text" data-i18n="what-to-remember" placeholder="Что вы хотите запомнить?" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-gray-900">
+                        </div>
+                        <!-- Content -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="content">Содержание</label>
+                            <textarea rows="6" data-i18n="add-details" placeholder="Добавьте детали, примеры, пояснения..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-gray-900"></textarea>
+                        </div>
+                        <!-- Tags -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="tags-label">Метки</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button class="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium flex items-center gap-2">
+                                    <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                    <span data-i18n="languages">Языки</span>
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                                    </svg>
+                                </button>
+                                <button class="px-4 py-2 border-2 border-dashed border-gray-300 text-gray-500 rounded-full text-sm font-medium">
+                                    <span data-i18n="add">+ Добавить</span>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Attachments -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="attachments">Вложения</label>
+                            <div class="flex gap-3">
+                                <button class="flex-1 border-2 border-dashed border-gray-300 rounded-xl p-4 text-center">
+                                    <div class="text-2xl mb-1">📷</div>
+                                    <div class="text-xs text-gray-500" data-i18n="photo">Фото</div>
+                                </button>
+                                <button class="flex-1 border-2 border-dashed border-gray-300 rounded-xl p-4 text-center">
+                                    <div class="text-2xl mb-1">🎤</div>
+                                    <div class="text-xs text-gray-500" data-i18n="audio">Аудио</div>
+                                </button>
+                                <button class="flex-1 border-2 border-dashed border-gray-300 rounded-xl p-4 text-center">
+                                    <div class="text-2xl mb-1">🔗</div>
+                                    <div class="text-xs text-gray-500" data-i18n="link">Ссылка</div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- iOS Notification -->
+            <div class="screen-container">
+                <h2 class="text-3xl font-bold text-white mb-6 text-center">iOS — Push Notification</h2>
+                <div class="max-w-sm mx-auto">
+                    <div class="notification-mock bg-white/90 border border-gray-200 shadow-2xl p-4 rounded-3xl">
+                        <div class="flex items-start gap-3 mb-3">
+                            <div class="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="white">
+                                    <path d="M8 5C8 5 10 2 14 2C18 2 20 5 20 5M8 5C8 5 10 8 14 8C18 8 20 5 20 5" stroke="white" stroke-width="1.5" fill="none"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-semibold text-gray-900 mb-0.5">Forgetting Ebbinghaus Curve</div>
+                                <div class="text-sm text-gray-700 mb-1" data-i18n="time-to-review">Время повторить материал</div>
+                                <div class="text-sm text-gray-600">
+                                    <span class="font-medium" data-i18n="word-serendipity">Слово: serendipity</span> — <span data-i18n="yesterday-rated">вчера оценили как "Нормально"</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="flex-1 bg-indigo-500 text-white py-2.5 rounded-xl font-medium text-sm">
+                                <span data-i18n="repeat-now">Повторить сейчас</span>
+                            </button>
+                            <button class="px-4 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium text-sm">
+                                <span data-i18n="snooze">Отложить</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- iOS Widgets -->
+            <div class="screen-container">
+                <h2 class="text-3xl font-bold text-white mb-6 text-center">iOS — Home Screen Widgets</h2>
+                <div class="max-w-md mx-auto bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 space-y-6">
+                    <!-- Small Widget -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3" data-i18n="small-widget">Малый виджет</h3>
+                        <div class="w-40 h-40 bg-white rounded-3xl shadow-lg p-4 flex flex-col items-center justify-center">
+                            <div class="text-indigo-500 text-sm font-semibold mb-1" data-i18n="today">Сегодня</div>
+                            <div class="text-5xl font-bold text-gray-900 mb-1">18</div>
+                            <div class="text-gray-500 text-xs" data-i18n="materials">материалов</div>
+                        </div>
+                    </div>
+                    <!-- Medium Widget -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3" data-i18n="medium-widget">Средний виджет</h3>
+                        <div class="w-full bg-white rounded-3xl shadow-lg p-5">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <div class="text-indigo-500 text-sm font-semibold mb-1" data-i18n="today">Сегодня</div>
+                                    <div class="text-3xl font-bold text-gray-900" data-i18n="today-materials">18 слов</div>
+                                </div>
+                                <div class="relative">
+                                    <svg width="64" height="64" class="transform -rotate-90">
+                                        <circle cx="32" cy="32" r="28" stroke="#e5e7eb" stroke-width="5" fill="none"/>
+                                        <circle cx="32" cy="32" r="28" stroke="#5856d6" stroke-width="5" fill="none" stroke-dasharray="175.929" stroke-dashoffset="52.779" stroke-linecap="round"/>
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="text-indigo-600 text-sm font-bold">70%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between py-2 border-t border-gray-100">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                                        <span class="text-sm text-gray-700" data-i18n="word-serendipity">Слово: serendipity</span>
+                                    </div>
+                                    <span class="text-xs text-gray-400">14:30</span>
+                                </div>
+                                <div class="flex items-center justify-between py-2 border-t border-gray-100">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                                        <span class="text-sm text-gray-700" data-i18n="formula-circle">Формула: Площадь круга</span>
+                                    </div>
+                                    <span class="text-xs text-gray-400">16:00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Footer -->
+        <div class="text-center mt-16 text-white/80">
+            <p class="text-lg mb-2">"Forgetting Ebbinghaus Curve" (working title) demo. Visit <a href="https://github.com/Pau1Net/Forgetting_Ebbinghaus_-urve" target="_blank" class="text-white underline decoration-2 underline-offset-2 hover:text-indigo-200 hover:decoration-indigo-300 transition-all font-semibold inline-flex items-center gap-1">GitHub <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a></p>
+            <p class="text-sm mb-4">Made with ❤️ by the Paul "PaulNet"</p>
+            <p class="text-xs text-white/50 max-w-2xl mx-auto italic">This is a demonstration. The final product may differ from what is shown here.</p>
+        </div>
+    </div>
+    <script>
+        // Translations object
+        const translations = {
+            ru: {
+                'hero-subtitle': 'Запомни все',
+                'today': 'Сегодня',
+                'scheduled': 'Запланировано',
+                'all-materials': 'Все материалы',
+                'tags': 'Метки',
+                'languages': 'Языки',
+                'exam': 'Экзамен',
+                'work': 'Работа',
+                'greeting': 'Привет, Александр',
+                'date': 'Вторник, 14 января',
+                'reviews-today': 'Повторения на сегодня',
+                'materials-waiting': '18 материалов ждут вашего внимания',
+                'start-review': 'Начать повторение',
+                'completed': 'выполнено',
+                'add-material': 'Добавить материал — мы напомним в нужный момент',
+                'forgetting-curve': 'Кривая забывания',
+                'time': 'Время',
+                'retention-up': 'Ваше удержание ↑ на 12% за неделю',
+                'weekly-activity': 'Активность за неделю',
+                'mon': 'Пн',
+                'tue': 'Вт',
+                'wed': 'Ср',
+                'thu': 'Чт',
+                'fri': 'Пт',
+                'sat': 'Сб',
+                'sun': 'Вс',
+                'reviews-this-week': '142 повторения на этой неделе',
+                'review-session': 'Сессия повторения',
+                'progress': '7 из 20',
+                'time-left': '≈ 8 минут осталось',
+                'word': 'Слово: serendipity',
+                'meaning': 'Значение:',
+                'meaning-text': 'счастливая случайность, приятная неожиданность',
+                'example': 'Пример: I found it by serendipity.',
+                'press-space': 'Нажмите пробел чтобы показать ответ',
+                'dont-remember': 'Не помню',
+                'repeat-10min': 'Повтор через 10 мин',
+                'key-1': 'Клавиша: 1',
+                'normal': 'Нормально',
+                'repeat-tomorrow': 'Повтор завтра в 10:00',
+                'key-2': 'Клавиша: 2',
+                'easy': 'Легко',
+                'repeat-3days': 'Повтор через 3 дня',
+                'key-3': 'Клавиша: 3',
+                'edit-material': 'Редактирование материала',
+                'title': 'Название',
+                'content': 'Содержание',
+                'formula-circle': 'Формула: Площадь круга',
+                'where': 'где:',
+                'tags-label': 'Метки',
+                'attachments': 'Вложения',
+                'rating-history': 'История оценок',
+                'hello-maria': 'Привет, Мария',
+                'tuesday-jan': 'Вторник, 14 января',
+                'today-materials': '18 слов',
+                'materials': 'материалов',
+                'cancel': 'Отмена',
+                'new-material': 'Новый материал',
+                'done': 'Готово',
+                'template': 'Шаблон',
+                'card': 'Карточка',
+                'qa': 'Вопрос / Ответ',
+                'time-to-review': 'Время повторить материал',
+                'word-serendipity': 'Слово: serendipity',
+                'yesterday-rated': 'вчера оценили как "Нормально"',
+                'small-widget': 'Малый виджет',
+                'medium-widget': 'Средний виджет',
+                'upcoming-reviews': 'Предстоящие повторения',
+                'note': 'Заметка',
+                'free-text': 'Свободный текст',
+                'formula-content': 'S = πr²\nгде:\n• S — площадь круга\n• r — радиус круга\n• π ≈ 3.14159\nПример: При r = 5 см\nS = 3.14 × 5² = 78.5 см²',
+                'add-tag': '+ Добавить метку',
+                'add-attachments': 'Добавьте изображения, аудио или ссылки',
+                'review-schedule': 'График повторений',
+                'current-interval': 'Текущий интервал',
+                'three-days': '3 дня',
+                'next-review': 'Следующий повтор',
+                'next-review-date': '17 янв, 10:00',
+                'date-jan14': '14 янв, 10:30',
+                'date-jan11': '11 янв, 15:20',
+                'date-jan10': '10 янв, 09:15',
+                'analytics': 'Аналитика',
+                'learning-stats': 'Ваша статистика обучения',
+                'day-streak': 'Серия дней',
+                'best-streak': '🔥 Лучшая: 45',
+                'retention': 'Удержание',
+                'retention-up-week': '↑ 12% за неделю',
+                'avg-interval': 'Средний интервал',
+                'days': 'дней',
+                'reviews-per-week': 'Повторений/неделя',
+                'reviews-increase': '+23 чем прошлая',
+                'activity-heatmap': 'Тепловая карта активности',
+                'today-at-1430': 'Сегодня в 14:30',
+                'today-at-16': 'Сегодня в 16:00',
+                'word-template': 'Слово',
+                'term-translation': 'Термин / Перевод',
+                'what-to-remember': 'Что вы хотите запомнить?',
+                'add-details': 'Добавьте детали, примеры, пояснения...',
+                'add': '+ Добавить',
+                'all': 'Все',
+                'interval-training': 'Интервальная тренировка',
+                'tomorrow-at-9': 'Завтра в 09:00',
+                'bayes-theorem': 'Теорема Байеса',
+                'bayes-description': 'Обновление вероятностей на основе новых данных',
+                'swipe-up': 'Смахните вверх чтобы увидеть детали',
+                'formula-template': 'Формула',
+                'equation': 'Уравнение',
+                'quick-add': 'Быстро добавить...',
+                'less': 'Меньше',
+                'more': 'Больше',
+                'interval-distribution': 'Распределение интервалов',
+                'interval-10min-1h': '10 мин — 1 час',
+                'materials-8': '8 материалов',
+                'interval-1-3days': '1 — 3 дня',
+                'materials-24': '24 материала',
+                'interval-7-16days': '7 — 16 дней',
+                'materials-31': '31 материал',
+                'interval-35-90days': '35 — 90+ дней',
+                'materials-12': '12 материалов',
+                'photo': 'Фото',
+                'audio': 'Аудио',
+                'link': 'Ссылка',
+                'repeat-now': 'Повторить сейчас',
+                'snooze': 'Отложить'
+            },
+            en: {
+                'hero-subtitle': 'Remember all of this...',
+                'today': 'Today',
+                'scheduled': 'Scheduled',
+                'all-materials': 'All Materials',
+                'tags': 'Tags',
+                'languages': 'Languages',
+                'exam': 'Exam',
+                'work': 'Work',
+                'greeting': 'Hello, Alexander',
+                'date': 'Tuesday, January 14',
+                'reviews-today': 'Reviews for Today',
+                'materials-waiting': '18 materials are waiting for your attention',
+                'start-review': 'Start Review',
+                'completed': 'completed',
+                'add-material': 'Add material — we\'ll remind you at the right time',
+                'forgetting-curve': 'Forgetting Curve',
+                'time': 'Time',
+                'retention-up': 'Your retention ↑ by 12% this week',
+                'weekly-activity': 'Weekly Activity',
+                'mon': 'Mon',
+                'tue': 'Tue',
+                'wed': 'Wed',
+                'thu': 'Thu',
+                'fri': 'Fri',
+                'sat': 'Sat',
+                'sun': 'Sun',
+                'reviews-this-week': '142 reviews this week',
+                'review-session': 'Review Session',
+                'progress': '7 of 20',
+                'time-left': '≈ 8 minutes left',
+                'word': 'Word: serendipity',
+                'meaning': 'Meaning:',
+                'meaning-text': 'a fortunate discovery by accident, a pleasant surprise',
+                'example': 'Example: I found it by serendipity.',
+                'press-space': 'Press space to show answer',
+                'dont-remember': "Don't Remember",
+                'repeat-10min': 'Repeat in 10 min',
+                'key-1': 'Key: 1',
+                'normal': 'Normal',
+                'repeat-tomorrow': 'Repeat tomorrow at 10:00',
+                'key-2': 'Key: 2',
+                'easy': 'Easy',
+                'repeat-3days': 'Repeat in 3 days',
+                'key-3': 'Key: 3',
+                'edit-material': 'Edit Material',
+                'title': 'Title',
+                'content': 'Content',
+                'formula-circle': 'Formula: Circle Area',
+                'where': 'where:',
+                'tags-label': 'Tags',
+                'attachments': 'Attachments',
+                'rating-history': 'Rating History',
+                'hello-maria': 'Hello, Maria',
+                'tuesday-jan': 'Tuesday, January 14',
+                'today-materials': '18 materials',
+                'materials': 'materials',
+                'cancel': 'Cancel',
+                'new-material': 'New Material',
+                'done': 'Done',
+                'template': 'Template',
+                'card': 'Card',
+                'qa': 'Question / Answer',
+                'time-to-review': 'Time to review material',
+                'word-serendipity': 'Word: serendipity',
+                'yesterday-rated': 'rated as "Normal" yesterday',
+                'small-widget': 'Small Widget',
+                'medium-widget': 'Medium Widget',
+                'upcoming-reviews': 'Upcoming Reviews',
+                'note': 'Note',
+                'free-text': 'Free text',
+                'formula-content': 'S = πr²\nwhere:\n• S — circle area\n• r — radius\n• π ≈ 3.14159\nExample: For r = 5 cm\nS = 3.14 × 5² = 78.5 cm²',
+                'add-tag': '+ Add Tag',
+                'add-attachments': 'Add images, audio, or links',
+                'review-schedule': 'Review Schedule',
+                'current-interval': 'Current Interval',
+                'three-days': '3 days',
+                'next-review': 'Next Review',
+                'next-review-date': 'Jan 17, 10:00',
+                'date-jan14': 'Jan 14, 10:30',
+                'date-jan11': 'Jan 11, 3:20 PM',
+                'date-jan10': 'Jan 10, 9:15 AM',
+                'analytics': 'Analytics',
+                'learning-stats': 'Your Learning Statistics',
+                'day-streak': 'Day Streak',
+                'best-streak': '🔥 Best: 45',
+                'retention': 'Retention',
+                'retention-up-week': '↑ 12% this week',
+                'avg-interval': 'Average Interval',
+                'days': 'days',
+                'reviews-per-week': 'Reviews/Week',
+                'reviews-increase': '+23 than last',
+                'activity-heatmap': 'Activity Heatmap',
+                'today-at-1430': 'Today at 2:30 PM',
+                'today-at-16': 'Today at 4:00 PM',
+                'word-template': 'Word',
+                'term-translation': 'Term / Translation',
+                'what-to-remember': 'What do you want to remember?',
+                'add-details': 'Add details, examples, explanations...',
+                'add': '+ Add',
+                'all': 'All',
+                'interval-training': 'Interval Training',
+                'tomorrow-at-9': 'Tomorrow at 9:00 AM',
+                'bayes-theorem': "Bayes' Theorem",
+                'bayes-description': 'Updating probabilities based on new data',
+                'swipe-up': 'Swipe up to see details',
+                'formula-template': 'Formula',
+                'equation': 'Equation',
+                'quick-add': 'Quick add...',
+                'less': 'Less',
+                'more': 'More',
+                'interval-distribution': 'Interval Distribution',
+                'interval-10min-1h': '10 min — 1 hour',
+                'materials-8': '8 materials',
+                'interval-1-3days': '1 — 3 days',
+                'materials-24': '24 materials',
+                'interval-7-16days': '7 — 16 days',
+                'materials-31': '31 material',
+                'interval-35-90days': '35 — 90+ days',
+                'materials-12': '12 materials',
+                'photo': 'Photo',
+                'audio': 'Audio',
+                'link': 'Link',
+                'repeat-now': 'Repeat Now',
+                'snooze': 'Snooze'
+            }
+        };
+
+        let currentLang = 'ru';
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('language', lang);
+            
+            // Update language buttons
+            document.getElementById('lang-ru').classList.toggle('active', lang === 'ru');
+            document.getElementById('lang-ru').classList.toggle('bg-white', lang === 'ru');
+            document.getElementById('lang-ru').classList.toggle('text-indigo-600', lang === 'ru');
+            document.getElementById('lang-ru').classList.toggle('text-white/80', lang !== 'ru');
+            
+            document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+            document.getElementById('lang-en').classList.toggle('bg-white', lang === 'en');
+            document.getElementById('lang-en').classList.toggle('text-indigo-600', lang === 'en');
+            document.getElementById('lang-en').classList.toggle('text-white/80', lang !== 'en');
+            
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    if (el.tagName === 'INPUT' && el.type === 'text') {
+                        el.placeholder = translations[lang][key];
+                    } else if (el.tagName === 'TEXTAREA') {
+                        el.textContent = translations[lang][key];
+                    } else if (el.tagName === 'text') {
+                        // SVG text elements
+                        el.textContent = translations[lang][key];
+                    } else {
+                        el.textContent = translations[lang][key];
+                    }
+                }
+            });
+            
+            // Update all elements with data-i18n-value attribute (for input values)
+            document.querySelectorAll('[data-i18n-value]').forEach(el => {
+                const key = el.getAttribute('data-i18n-value');
+                if (translations[lang][key]) {
+                    el.value = translations[lang][key];
+                }
+            });
+        }
+
+        // Initialize language on page load
+        const savedLang = localStorage.getItem('language') || 'ru';
+        setLanguage(savedLang);
+
+        function toggleTheme() {
+            const body = document.body;
+            const lightIcon = document.querySelector('.light-icon');
+            const darkIcon = document.querySelector('.dark-icon');
+            
+            if (body.classList.contains('light')) {
+                body.classList.remove('light');
+                body.classList.add('dark');
+                lightIcon.classList.add('hidden');
+                darkIcon.classList.remove('hidden');
+            } else {
+                body.classList.remove('dark');
+                body.classList.add('light');
+                lightIcon.classList.remove('hidden');
+                darkIcon.classList.add('hidden');
+            }
+        }
+        function showPlatform(platform) {
+            const macosScreens = document.getElementById('macos-screens');
+            const iosScreens = document.getElementById('ios-screens');
+            const tabMacos = document.getElementById('tab-macos');
+            const tabIos = document.getElementById('tab-ios');
+            if (platform === 'macos') {
+                macosScreens.classList.remove('hidden');
+                iosScreens.classList.add('hidden');
+                tabMacos.classList.add('tab-active');
+                tabMacos.classList.remove('bg-white/20', 'text-white', 'hover:bg-white/30');
+                tabIos.classList.remove('tab-active');
+                tabIos.classList.add('bg-white/20', 'text-white', 'hover:bg-white/30');
+            } else {
+                macosScreens.classList.add('hidden');
+                iosScreens.classList.remove('hidden');
+                tabIos.classList.add('tab-active');
+                tabIos.classList.remove('bg-white/20', 'text-white', 'hover:bg-white/30');
+                tabMacos.classList.remove('tab-active');
+                tabMacos.classList.add('bg-white/20', 'text-white', 'hover:bg-white/30');
+            }
+        }
+        // Add subtle parallax effect on scroll
+        window.addEventListener('scroll', () => {
+            const screens = document.querySelectorAll('.screen-container');
+            screens.forEach((screen, index) => {
+                const rect = screen.getBoundingClientRect();
+                const inView = rect.top < window.innerHeight && rect.bottom > 0;
+                if (inView) {
+                    const offset = (window.innerHeight - rect.top) / window.innerHeight;
+                    screen.style.opacity = Math.min(1, offset * 1.5);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
