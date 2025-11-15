@@ -7,8 +7,14 @@
 
 import Foundation
 
+// Protocol for dependency injection and testing
+protocol PersistenceManagerProtocol {
+    func loadItems() -> [RecallItem]
+    func saveItems(_ items: [RecallItem])
+}
+
 // A dedicated manager for saving and loading data.
-final class PersistenceManager {
+final class PersistenceManager: PersistenceManagerProtocol {
     
     static let shared = PersistenceManager()
     private init() {}

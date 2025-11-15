@@ -9,17 +9,23 @@ import Foundation
 
 @MainActor
 class RecallListViewModel: ObservableObject {
-    
+
     @Published private(set) var items: [RecallItem] = [] {
         didSet {
             persistenceManager.saveItems(items)
         }
     }
-    
-    private let notificationManager = NotificationManager.shared
-    private let persistenceManager = PersistenceManager.shared
 
-    init() {
+    private let notificationManager: NotificationManagerProtocol
+    private let persistenceManager: PersistenceManagerProtocol
+
+    // Dependency injection with default parameters for backward compatibility
+    init(
+        notificationManager: NotificationManagerProtocol = NotificationManager.shared,
+        persistenceManager: PersistenceManagerProtocol = PersistenceManager.shared
+    ) {
+        self.notificationManager = notificationManager
+        self.persistenceManager = persistenceManager
         self.items = persistenceManager.loadItems()
     }
     

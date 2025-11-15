@@ -8,7 +8,17 @@
 import Foundation
 import UserNotifications
 
-final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
+// Protocol for dependency injection and testing
+protocol NotificationManagerProtocol {
+    func setupDelegate()
+    func requestAuthorization()
+    func scheduleNotifications(for item: RecallItem, on dates: [Date])
+    func cancelAllNotifications()
+    func cancelNotifications(for item: RecallItem)
+    func logPendingNotifications()
+}
+
+final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, NotificationManagerProtocol {
     
     static let shared = NotificationManager()
     
