@@ -20,5 +20,17 @@ struct Forgetting_Ebbinghaus_urveApp: App {
         WindowGroup {
             ContentView()
         }
+        #if os(macOS)
+        .commands {
+            // Add Edit menu commands for deletion
+            CommandGroup(after: .pasteboard) {
+                Divider()
+                Button("Delete") {
+                    // The onDeleteCommand modifier in ContentView will handle this
+                }
+                .keyboardShortcut(.delete, modifiers: [])
+            }
+        }
+        #endif
     }
 }
