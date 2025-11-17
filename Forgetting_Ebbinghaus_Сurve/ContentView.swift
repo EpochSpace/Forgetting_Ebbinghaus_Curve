@@ -19,6 +19,13 @@ struct ContentView: View {
     @State private var currentConflict: NotificationConflict?
     @State private var pendingContent: String = ""
 
+    // Text complexity analysis states
+    @State private var detectedCategory: TextCategory = .medium
+    @State private var analysisResult: TextComplexityAnalyzer.AnalysisResult?
+    @State private var manualCategoryOverride: TextCategory?
+    @State private var showCategoryDetails = false
+    @State private var analysisDebounceTask: Task<Void, Never>?
+
     var body: some View {
         NavigationStack {
             VStack {
@@ -63,16 +70,96 @@ struct ContentView: View {
                     }
                     .listStyle(.plain)
                 }
-                
-                HStack {
-                    TextField("What do you want to remember?", text: $newItemContent)
-                        .textFieldStyle(.roundedBorder)
-                    
-                    Button(action: addItem) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title)
+
+                VStack(spacing: 8) {
+                    // Input field with real-time analysis
+                    HStack {
+                        TextField("What do you want to remember?", text: $newItemContent)
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: newItemContent) { _, newValue in
+                                updateCategoryAnalysis(for: newValue)
+                            }
+
+                        Button(action: addItem) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title)
+                        }
+                        .disabled(newItemContent.isEmpty)
                     }
-                    .disabled(newItemContent.isEmpty)
+
+                    // Category selection and analysis display
+                    if !newItemContent.isEmpty {
+                        VStack(spacing: 6) {
+                            // Detected category info
+                            HStack {
+                                Image(systemName: detectedCategory.icon)
+                                    .foregroundStyle(.secondary)
+                                Text("Detected: \(detectedCategory.displayName)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+
+                                if let result = analysisResult, result.complexityScore > 0 {
+                                    Button(action: { showCategoryDetails.toggle() }) {
+                                        Image(systemName: "info.circle")
+                                            .font(.caption)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+
+                                Spacer()
+
+                                if let result = analysisResult {
+                                    Text("\(result.characterCount) chars")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
+
+                            // Category override picker
+                            HStack {
+                                Text("Category:")
+                                    .font(.subheadline)
+
+                                Picker("", selection: Binding(
+                                    get: { manualCategoryOverride ?? detectedCategory },
+                                    set: { newValue in
+                                        manualCategoryOverride = (newValue == detectedCategory) ? nil : newValue
+                                    }
+                                )) {
+                                    ForEach(TextCategory.allCases, id: \.self) { category in
+                                        HStack {
+                                            Image(systemName: category.icon)
+                                            Text(category.displayName)
+                                        }
+                                        .tag(category)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+
+                                if manualCategoryOverride != nil {
+                                    Button("Reset") {
+                                        manualCategoryOverride = nil
+                                    }
+                                    .font(.caption)
+                                }
+                            }
+
+                            // Detailed analysis (expandable)
+                            if showCategoryDetails, let result = analysisResult {
+                                Text(result.detailDescription)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.vertical, 4)
+                                    .padding(.horizontal, 8)
+                                    .background(Color.secondary.opacity(0.1))
+                                    .cornerRadius(4)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(Color.secondary.opacity(0.05))
+                        .cornerRadius(8)
+                    }
                 }
                 .padding()
             }
@@ -150,29 +237,67 @@ struct ContentView: View {
 
     // MARK: - Helper Methods
 
+    /// Updates the category analysis with debouncing to improve performance
+    /// Waits 300ms after the user stops typing before running the analysis
+    private func updateCategoryAnalysis(for content: String) {
+        // Cancel any pending analysis
+        analysisDebounceTask?.cancel()
+
+        guard !content.isEmpty else {
+            analysisResult = nil
+            detectedCategory = .medium
+            return
+        }
+
+        // Schedule new analysis with 300ms debounce
+        analysisDebounceTask = Task {
+            do {
+                try await Task.sleep(for: .milliseconds(300))
+
+                // Check if task was cancelled during sleep
+                guard !Task.isCancelled else { return }
+
+                // Perform analysis on main actor
+                await MainActor.run {
+                    let result = viewModel.analyzeText(content)
+                    analysisResult = result
+                    detectedCategory = result.category
+
+                    // Clear manual override if detected category changes and matches the override
+                    if let override = manualCategoryOverride, override == detectedCategory {
+                        manualCategoryOverride = nil
+                    }
+                }
+            } catch {
+                // Task was cancelled, ignore
+            }
+        }
+    }
+
     private func addItem() {
         let content = newItemContent
+        let selectedCategory = manualCategoryOverride ?? detectedCategory
 
-        // Check for night-time conflicts
-        if let conflict = viewModel.checkForConflicts(content: content) {
+        // Check for night-time conflicts with the selected category
+        if let conflict = viewModel.checkForConflicts(content: content, category: selectedCategory) {
             // Store the conflict and pending content
             currentConflict = conflict
             pendingContent = content
             showingNightTimeAlert = true
         } else {
-            // No conflicts, add normally
-            viewModel.addItem(content: content, withConflict: nil)
-            newItemContent = ""
+            // No conflicts, add normally with selected category
+            viewModel.addItem(content: content, manualCategory: manualCategoryOverride, withConflict: nil)
+            clearPendingState()
         }
     }
 
     private func addItemWithPostponement() {
-        viewModel.addItem(content: pendingContent, withConflict: currentConflict)
+        viewModel.addItem(content: pendingContent, manualCategory: manualCategoryOverride, withConflict: currentConflict)
         clearPendingState()
     }
 
     private func addItemWithoutPostponement() {
-        viewModel.addItem(content: pendingContent, withConflict: nil)
+        viewModel.addItem(content: pendingContent, manualCategory: manualCategoryOverride, withConflict: nil)
         clearPendingState()
     }
 
@@ -180,6 +305,12 @@ struct ContentView: View {
         newItemContent = ""
         pendingContent = ""
         currentConflict = nil
+        manualCategoryOverride = nil
+        analysisResult = nil
+        detectedCategory = .medium
+        showCategoryDetails = false
+        analysisDebounceTask?.cancel()
+        analysisDebounceTask = nil
     }
 
     /// Confirms deletion for multiple items (shows dialog)

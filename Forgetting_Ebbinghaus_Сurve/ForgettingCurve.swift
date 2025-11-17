@@ -8,9 +8,31 @@
 import Foundation
 
 // Defines the Ebbinghaus forgetting curve intervals.
-// This is a dedicated business logic module.
+// This is a dedicated business logic module with support for adaptive scheduling
+// based on text length and complexity.
 enum ForgettingCurve {
-    static let intervals: [TimeInterval] = [
+
+    // MARK: - Interval Sets
+
+    /// Intervals for short, simple text (< 150 chars)
+    /// Compressed schedule with faster early repetitions
+    private static let shortTextIntervals: [TimeInterval] = [
+        3,           // 3 seconds
+        15,          // 15 seconds
+        90,          // 1.5 minutes
+        300,         // 5 minutes
+        1800,        // 30 minutes
+        9000,        // 2.5 hours
+        43200,       // 12 hours
+        172800,      // 2 days
+        864000,      // 10 days
+        5184000,     // 2 months (approx)
+        31536000     // 1 year (approx)
+    ]
+
+    /// Intervals for medium text (150-400 chars)
+    /// Standard Ebbinghaus curve - balanced approach
+    private static let mediumTextIntervals: [TimeInterval] = [
         5,           // 5 seconds
         25,          // 25 seconds
         120,         // 2 minutes
@@ -24,10 +46,62 @@ enum ForgettingCurve {
         63072000     // 2 years (approx)
     ]
 
-    // Calculates all reminder dates based on a starting date.
-    static func reminderDates(from startDate: Date) -> [Date] {
-        return intervals.map { interval in
+    /// Intervals for long, complex text (> 400 chars)
+    /// Extended schedule with more time between repetitions
+    private static let longTextIntervals: [TimeInterval] = [
+        10,          // 10 seconds
+        60,          // 1 minute
+        300,         // 5 minutes
+        1800,        // 30 minutes
+        10800,       // 3 hours
+        43200,       // 12 hours
+        259200,      // 3 days
+        1296000,     // 15 days
+        5184000,     // 60 days
+        20736000,    // 8 months (approx)
+        94608000     // 3 years (approx)
+    ]
+
+    // MARK: - Backwards Compatibility
+
+    /// Legacy intervals property - defaults to medium for backwards compatibility
+    /// - Warning: This property will be removed in version 2.0. Use `intervals(for:)` instead.
+    /// - Migration: Replace `ForgettingCurve.intervals` with `ForgettingCurve.intervals(for: .medium)`
+    @available(*, deprecated, renamed: "intervals(for:)",
+               message: "Use intervals(for:) to support adaptive text categories. Defaults to .medium. Will be removed in version 2.0.")
+    static let intervals: [TimeInterval] = mediumTextIntervals
+
+    // MARK: - Public API
+
+    /// Returns the appropriate interval set for a given text category
+    static func intervals(for category: TextCategory) -> [TimeInterval] {
+        switch category {
+        case .short:
+            return shortTextIntervals
+        case .medium:
+            return mediumTextIntervals
+        case .long:
+            return longTextIntervals
+        }
+    }
+
+    /// Calculates all reminder dates based on a starting date and text category
+    static func reminderDates(from startDate: Date, category: TextCategory = .medium) -> [Date] {
+        let selectedIntervals = intervals(for: category)
+        return selectedIntervals.map { interval in
             startDate.addingTimeInterval(interval)
         }
+    }
+
+    // MARK: - Legacy Method (Backwards Compatibility)
+
+    /// Legacy method - defaults to medium category for backwards compatibility
+    /// - Warning: This method will be removed in version 2.0. Use `reminderDates(from:category:)` instead.
+    /// - Migration: Replace `reminderDates(from: date)` with `reminderDates(from: date, category: .medium)`
+    ///   or let the system auto-detect by using the default parameter value
+    @available(*, deprecated, renamed: "reminderDates(from:category:)",
+               message: "Use reminderDates(from:category:) to support adaptive text categories. Defaults to .medium. Will be removed in version 2.0.")
+    static func reminderDates(from startDate: Date) -> [Date] {
+        return reminderDates(from: startDate, category: .medium)
     }
 }

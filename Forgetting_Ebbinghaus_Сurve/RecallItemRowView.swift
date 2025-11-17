@@ -6,27 +6,53 @@
 //
 
 import SwiftUI
+import Combine
 
 struct RecallItemRowView: View {
     let item: RecallItem
     let reminderDates: [Date]
-    // Теперь мы принимаем конкретную дату для обратного отсчета.
+    /// The specific date for countdown display
     let nextReminderDate: Date?
-    
-    // Этот таймер будет срабатывать каждую секунду и обновлять UI.
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
     @State private var timeRemainingString: String = "Loading..."
+    @State private var timerCancellable: AnyCancellable?
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) { // Увеличил отступ для красоты
-            Text(item.content)
-                .font(.headline)
-            
-            // --- ОТОБРАЖЕНИЕ ТАЙМЕРА ЗДЕСЬ ---
-            // Заметный дисплей для обратного отсчета.
-            if let nextDate = nextReminderDate {
+        VStack(alignment: .leading, spacing: 8) {
+            // Content with category badge
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.content)
+                        .font(.headline)
+
+                    // Category badge with icon
+                    HStack(spacing: 4) {
+                        Image(systemName: item.textCategory.icon)
+                            .font(.caption2)
+                        Text(item.textCategory.displayName)
+                            .font(.caption)
+
+                        if item.isManuallyOverridden {
+                            Image(systemName: "hand.tap.fill")
+                                .font(.caption2)
+                                .help("Manually adjusted")
+                        }
+
+                        Text("•")
+                            .foregroundStyle(.tertiary)
+                        Text("\(item.characterCount) chars")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+
+            // Timer display
+            if nextReminderDate != nil {
                 Text("Next recall in: \(timeRemainingString)")
-                    .font(.subheadline.monospaced()) // Моноширинный шрифт для таймеров
+                    .font(.subheadline.monospaced())
                     .foregroundStyle(.secondary)
             } else {
                  Text("All recalls complete!")
@@ -34,7 +60,7 @@ struct RecallItemRowView: View {
                     .foregroundStyle(.green)
             }
             
-            DisclosureGroup("All reminders") { // Изменил заголовок для ясности
+            DisclosureGroup("All reminders") {
                 VStack(alignment: .leading) {
                     ForEach(reminderDates, id: \.self) { date in
                         Text(date.formatted(.dateTime.day().month().year().hour().minute().second()))
@@ -46,20 +72,58 @@ struct RecallItemRowView: View {
             .font(.caption)
         }
         .padding(.vertical, 8)
-        .onAppear(perform: updateRemainingTime) // Устанавливаем начальное значение
-        .onReceive(timer) { _ in // Обновляем каждую секунду
-            updateRemainingTime()
+        .onAppear {
+            startTimerIfNeeded()
+        }
+        .onDisappear {
+            cancelTimer()
         }
     }
-    
-    // Приватная вспомогательная функция для чистоты логики.
-    private func updateRemainingTime() {
-        guard let date = nextReminderDate else {
+
+    // MARK: - Helper Methods
+
+    /// Starts the timer if there's a next reminder date to count down to
+    private func startTimerIfNeeded() {
+        // Only start timer if there's an upcoming reminder
+        guard nextReminderDate != nil else {
             timeRemainingString = "N/A"
             return
         }
-        
+
+        // Set initial value
+        updateRemainingTime()
+
+        // Start the repeating timer
+        timerCancellable = Timer.publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { _ in
+                updateRemainingTime()
+            }
+    }
+
+    /// Cancels the timer to prevent memory leaks
+    private func cancelTimer() {
+        timerCancellable?.cancel()
+        timerCancellable = nil
+    }
+
+    /// Updates the countdown timer display
+    private func updateRemainingTime() {
+        guard let date = nextReminderDate else {
+            timeRemainingString = "N/A"
+            cancelTimer() // Stop timer if no date
+            return
+        }
+
         let remaining = date.timeIntervalSince(Date())
-        self.timeRemainingString = remaining.formattedForCountdown()
+
+        // If the reminder has passed, stop the timer
+        if remaining < 0 {
+            timeRemainingString = "Overdue"
+            cancelTimer()
+            return
+        }
+
+        timeRemainingString = remaining.formattedForCountdown()
     }
 }
