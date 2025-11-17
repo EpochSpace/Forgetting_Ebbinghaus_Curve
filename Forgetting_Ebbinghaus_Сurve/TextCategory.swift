@@ -30,9 +30,9 @@ enum TextCategory: String, Codable, CaseIterable {
     var description: String {
         switch self {
         case .short:
-            return "< 150 characters - Quick review intervals"
+            return "< 20 characters - Quick review intervals"
         case .medium:
-            return "150-400 characters - Standard intervals"
+            return "20-400 characters - Standard intervals"
         case .long:
             return "> 400 characters - Extended intervals"
         }

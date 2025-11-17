@@ -13,7 +13,10 @@ struct TextComplexityAnalyzer {
     // MARK: - Thresholds
 
     /// Character count thresholds for base categorization
-    private static let shortThreshold = 150
+    /// Short: < 20 chars (quick notes, simple reminders)
+    /// Medium: 20-400 chars (standard text, paragraphs)
+    /// Long: > 400 chars (detailed content, multiple paragraphs)
+    private static let shortThreshold = 20
     private static let mediumThreshold = 400
 
     /// Complexity score thresholds that can bump category up

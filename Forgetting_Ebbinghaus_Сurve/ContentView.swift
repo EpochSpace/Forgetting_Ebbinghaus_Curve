@@ -20,7 +20,7 @@ struct ContentView: View {
     @State private var pendingContent: String = ""
 
     // Text complexity analysis states
-    @State private var detectedCategory: TextCategory = .medium
+    @State private var detectedCategory: TextCategory = .short
     @State private var analysisResult: TextComplexityAnalyzer.AnalysisResult?
     @State private var manualCategoryOverride: TextCategory?
     @State private var showCategoryDetails = false
@@ -127,11 +127,8 @@ struct ContentView: View {
                                     }
                                 )) {
                                     ForEach(TextCategory.allCases, id: \.self) { category in
-                                        HStack {
-                                            Image(systemName: category.icon)
-                                            Text(category.displayName)
-                                        }
-                                        .tag(category)
+                                        Text(category.displayName)
+                                            .tag(category)
                                     }
                                 }
                                 .pickerStyle(.segmented)
@@ -245,11 +242,22 @@ struct ContentView: View {
 
         guard !content.isEmpty else {
             analysisResult = nil
-            detectedCategory = .medium
+            detectedCategory = .short
             return
         }
 
-        // Schedule new analysis with 300ms debounce
+        // Provide immediate preliminary categorization based on character count
+        // This gives instant feedback before the debounced complexity analysis runs
+        let charCount = content.count
+        if charCount < 20 {
+            detectedCategory = .short
+        } else if charCount < 400 {
+            detectedCategory = .medium
+        } else {
+            detectedCategory = .long
+        }
+
+        // Schedule full analysis with complexity detection after 300ms debounce
         analysisDebounceTask = Task {
             do {
                 try await Task.sleep(for: .milliseconds(300))
@@ -307,7 +315,7 @@ struct ContentView: View {
         currentConflict = nil
         manualCategoryOverride = nil
         analysisResult = nil
-        detectedCategory = .medium
+        detectedCategory = .short
         showCategoryDetails = false
         analysisDebounceTask?.cancel()
         analysisDebounceTask = nil
