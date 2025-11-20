@@ -13,8 +13,10 @@ protocol NotificationManagerProtocol {
     func setupDelegate()
     func requestAuthorization()
     func scheduleNotifications(for item: RecallItem, on dates: [Date])
+    func scheduleNotifications(for flashcard: FlashcardItem, on dates: [Date])
     func cancelAllNotifications()
     func cancelNotifications(for item: RecallItem)
+    func cancelNotifications(for flashcard: FlashcardItem)
     func logPendingNotifications()
 }
 
@@ -109,6 +111,47 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Not
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Flashcard Notification Methods
+
+    /// Schedule notifications for a flashcard item
+    /// Shows question (front content) with hint to review answer
+    func scheduleNotifications(for flashcard: FlashcardItem, on dates: [Date]) {
+        for date in dates {
+            let content = UNMutableNotificationContent()
+            content.title = "Time to review flashcard!"
+            // Format: "{question}\n\nTap to review answer"
+            content.body = "\(flashcard.frontContent)\n\nTap to review answer"
+            content.sound = .default
+
+            let dateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
+
+            let requestIdentifier = "\(flashcard.id.uuidString)-\(date.timeIntervalSince1970)"
+            let request = UNNotificationRequest(identifier: requestIdentifier, content: content, trigger: trigger)
+
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error = error {
+                    print("Error scheduling flashcard notification: \(error.localizedDescription)")
+                }
+            }
+        }
+        print("Scheduled \(dates.count) notifications for flashcard '\(flashcard.frontPreview)'")
+    }
+
+    /// Cancel all notifications for a specific flashcard
+    func cancelNotifications(for flashcard: FlashcardItem) {
+        let flashcardIdentifierPrefix = flashcard.id.uuidString
+
+        UNUserNotificationCenter.current().getPendingNotificationRequests { (requests) in
+            let identifiersToRemove = requests
+                .filter { $0.identifier.hasPrefix(flashcardIdentifierPrefix) }
+                .map { $0.identifier }
+
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiersToRemove)
+            print("Cancelled \(identifiersToRemove.count) notifications for flashcard '\(flashcard.frontPreview)'")
         }
     }
 }

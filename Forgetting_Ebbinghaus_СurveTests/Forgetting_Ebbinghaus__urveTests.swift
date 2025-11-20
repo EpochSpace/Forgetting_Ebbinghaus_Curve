@@ -16,17 +16,31 @@ import Foundation
 final class MockPersistenceManager: PersistenceManagerProtocol {
     var savedItems: [RecallItem] = []
     var itemsToLoad: [RecallItem] = []
-    var saveCallCount = 0
-    var loadCallCount = 0
+    var savedFlashcards: [FlashcardItem] = []
+    var flashcardsToLoad: [FlashcardItem] = []
+    var saveItemsCallCount = 0
+    var loadItemsCallCount = 0
+    var saveFlashcardsCallCount = 0
+    var loadFlashcardsCallCount = 0
 
     func loadItems() -> [RecallItem] {
-        loadCallCount += 1
+        loadItemsCallCount += 1
         return itemsToLoad
     }
 
     func saveItems(_ items: [RecallItem]) {
-        saveCallCount += 1
+        saveItemsCallCount += 1
         savedItems = items
+    }
+
+    func loadFlashcards() -> [FlashcardItem] {
+        loadFlashcardsCallCount += 1
+        return flashcardsToLoad
+    }
+
+    func saveFlashcards(_ flashcards: [FlashcardItem]) {
+        saveFlashcardsCallCount += 1
+        savedFlashcards = flashcards
     }
 }
 
@@ -36,6 +50,8 @@ final class MockNotificationManager: NotificationManagerProtocol {
     var authorizationRequested = false
     var scheduledNotifications: [(item: RecallItem, dates: [Date])] = []
     var cancelledItems: [RecallItem] = []
+    var scheduledFlashcardNotifications: [(flashcard: FlashcardItem, dates: [Date])] = []
+    var cancelledFlashcards: [FlashcardItem] = []
     var allNotificationsCancelled = false
     var delegateSetup = false
     var loggingRequested = false
@@ -58,6 +74,14 @@ final class MockNotificationManager: NotificationManagerProtocol {
 
     func cancelNotifications(for item: RecallItem) {
         cancelledItems.append(item)
+    }
+
+    func scheduleNotifications(for flashcard: FlashcardItem, on dates: [Date]) {
+        scheduledFlashcardNotifications.append((flashcard, dates))
+    }
+
+    func cancelNotifications(for flashcard: FlashcardItem) {
+        cancelledFlashcards.append(flashcard)
     }
 
     func logPendingNotifications() {
@@ -559,7 +583,7 @@ struct RecallListViewModelTests {
         )
 
         #expect(viewModel.items.count == 2)
-        #expect(mockPersistence.loadCallCount == 1)
+        #expect(mockPersistence.loadItemsCallCount == 1)
     }
 
     @Test("Adding item inserts at beginning of array")
@@ -615,10 +639,10 @@ struct RecallListViewModelTests {
             persistenceManager: mockPersistence
         )
 
-        let initialSaveCount = mockPersistence.saveCallCount
+        let initialSaveCount = mockPersistence.saveItemsCallCount
         viewModel.addItem(content: "Test")
 
-        #expect(mockPersistence.saveCallCount > initialSaveCount)
+        #expect(mockPersistence.saveItemsCallCount > initialSaveCount)
         #expect(mockPersistence.savedItems.count == 1)
     }
 
@@ -767,7 +791,7 @@ struct IntegrationTests {
         #expect(viewModel.items.first?.content == "Learn Swift Testing")
 
         // Verify persistence was called
-        #expect(mockPersistence.saveCallCount > 0)
+        #expect(mockPersistence.saveItemsCallCount > 0)
         #expect(mockPersistence.savedItems.count == 1)
 
         // Verify notifications were scheduled

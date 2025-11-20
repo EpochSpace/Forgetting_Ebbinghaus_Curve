@@ -25,14 +25,24 @@ struct TextComplexityAnalyzer {
 
     // MARK: - Regex Patterns
 
-    /// Regex for detecting numbers and percentages
-    private static let numberPattern: NSRegularExpression? = {
-        try? NSRegularExpression(pattern: "\\d+\\.?\\d*%?", options: [])
+    /// Regex for detecting numbers and percentages (e.g., "42", "3.14", "50%")
+    /// Force-initialized to fail fast if pattern is invalid
+    private static let numberPattern: NSRegularExpression = {
+        do {
+            return try NSRegularExpression(pattern: "\\d+\\.?\\d*%?", options: [])
+        } catch {
+            fatalError("Invalid regex pattern for number detection: \(error.localizedDescription)")
+        }
     }()
 
-    /// Regex for detecting acronyms (2+ consecutive uppercase letters)
-    private static let acronymPattern: NSRegularExpression? = {
-        try? NSRegularExpression(pattern: "\\b[A-Z]{2,}\\b", options: [])
+    /// Regex for detecting acronyms (2+ consecutive uppercase letters, e.g., "API", "HTTP")
+    /// Force-initialized to fail fast if pattern is invalid
+    private static let acronymPattern: NSRegularExpression = {
+        do {
+            return try NSRegularExpression(pattern: "\\b[A-Z]{2,}\\b", options: [])
+        } catch {
+            fatalError("Invalid regex pattern for acronym detection: \(error.localizedDescription)")
+        }
     }()
 
     // MARK: - Analysis Result
@@ -118,10 +128,10 @@ struct TextComplexityAnalyzer {
         complexityFactors += Double(mathCount) * 3.0 // Weight formulas heavily
 
         // 2. Numbers and percentages
-        let numberMatches = Self.numberPattern?.numberOfMatches(
+        let numberMatches = Self.numberPattern.numberOfMatches(
             in: text,
             range: NSRange(text.startIndex..., in: text)
-        ) ?? 0
+        )
         complexityFactors += Double(numberMatches) * 1.5
 
         // 3. Special/scientific characters
@@ -185,10 +195,10 @@ struct TextComplexityAnalyzer {
         }
 
         // 2. Acronyms (2+ consecutive uppercase letters)
-        let acronymCount = Self.acronymPattern?.numberOfMatches(
+        let acronymCount = Self.acronymPattern.numberOfMatches(
             in: text,
             range: NSRange(text.startIndex..., in: text)
-        ) ?? 0
+        )
 
         if acronymCount >= 2 {
             return true

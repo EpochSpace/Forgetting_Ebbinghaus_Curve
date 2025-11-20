@@ -93,6 +93,38 @@ enum ForgettingCurve {
         }
     }
 
+    /// Returns adjusted intervals with an adaptive multiplier for flashcard learning
+    /// Used to speed up or slow down the schedule based on review performance
+    /// - Parameters:
+    ///   - category: The text category determining base intervals
+    ///   - multiplier: Adaptive multiplier (typically 0.5-2.0)
+    /// - Returns: Array of adjusted intervals, clamped to reasonable bounds
+    static func adjustedIntervals(for category: TextCategory, multiplier: Double) -> [TimeInterval] {
+        let baseIntervals = intervals(for: category)
+
+        return baseIntervals.map { interval in
+            let adjusted = interval * multiplier
+            // Clamp to reasonable bounds: min 5 seconds, max 5 years
+            let minInterval: TimeInterval = 5
+            let maxInterval: TimeInterval = 157680000 // ~5 years
+            return max(minInterval, min(maxInterval, adjusted))
+        }
+    }
+
+    /// Calculates adjusted reminder dates with adaptive multiplier
+    /// Used for flashcard items with performance-based interval adjustment
+    /// - Parameters:
+    ///   - startDate: The starting date for calculations
+    ///   - category: The text category determining base intervals
+    ///   - multiplier: Adaptive multiplier based on review performance
+    /// - Returns: Array of reminder dates with adjusted intervals
+    static func adjustedReminderDates(from startDate: Date, category: TextCategory, multiplier: Double) -> [Date] {
+        let selectedIntervals = adjustedIntervals(for: category, multiplier: multiplier)
+        return selectedIntervals.map { interval in
+            startDate.addingTimeInterval(interval)
+        }
+    }
+
     // MARK: - Legacy Method (Backwards Compatibility)
 
     /// Legacy method - defaults to medium category for backwards compatibility
