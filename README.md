@@ -6,6 +6,45 @@ designed to enhance information retention based on the [Ebbinghaus forgetting cu
 The application is currently in early development stages, with core features yet to be implemented.
 It's worth noting that this application will remain completely free and open-source throughout its development lifecycle and ongoing maintenance.
 
+## Project Structure
+
+The codebase is organized into logical folders under `Forgetting_Ebbinghaus_Сurve/`:
+
+```
+Forgetting_Ebbinghaus_Сurve/
+├── App/
+│   └── Forgetting_Ebbinghaus__urveApp.swift      # Main app entry point
+├── Models/
+│   ├── FlashcardItem.swift                       # Flashcard data model
+│   ├── RecallItem.swift                          # Recall task data model
+│   ├── StudyProgress.swift                       # Review tracking for flashcards
+│   ├── ReviewDifficulty.swift                    # Difficulty rating enum (Easy/Good/Hard)
+│   ├── TextCategory.swift                        # Text categorization enum (Short/Medium/Long)
+│   └── NotificationConflict.swift                # Night window conflict representation
+├── Services/
+│   ├── NotificationManager.swift                 # System notification handling
+│   ├── PersistenceManager.swift                  # JSON-based data persistence
+│   ├── ForgettingCurve.swift                     # Spaced repetition interval calculations
+│   ├── TextComplexityAnalyzer.swift              # Text analysis and categorization
+│   └── NightWindow.swift                         # Night-time scheduling utilities
+├── Utilities/
+│   ├── AppColor.swift                            # Color theme definitions
+│   ├── Constants.swift                           # App-wide constants
+│   └── TimeInterval+Formatting.swift             # Time formatting extensions
+├── ViewModels/
+│   └── RecallListViewModel.swift                 # Main business logic coordinator
+├── Views/
+│   ├── RecallItems/                              # Recall task views
+│   │   └── ContentView.swift                     # Main recall interface
+│   └── Flashcards/                               # Flashcard system views
+│       ├── FlashcardListView.swift               # Main flashcard list with filters
+│       ├── FlashcardRowView.swift                # Individual row in list
+│       ├── FlashcardDetailView.swift             # Card with flip animation
+│       ├── StudySessionView.swift                # Dedicated study mode interface
+│       └── IndividualFlashcardReviewView.swift   # Single card review with stats
+└── Assets.xcassets                               # Images and color assets
+```
+
 ## Roadmap / TODO
 
 - [x] Initial project setup
